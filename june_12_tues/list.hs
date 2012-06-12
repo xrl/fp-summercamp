@@ -33,6 +33,6 @@ takePrefix num (x:xs) = x : takePrefix (num-1) xs
 dropPrefix :: Int -> [a] -> [a]
 dropPrefix 0   xs     = xs
 dropPrefix num []     = []
-dropPrefix num (x:xs) = takePrefix (num-1) xs
+dropPrefix num (x:xs) = dropPrefix (num-1) xs
 
 
