@@ -35,4 +35,30 @@ dropPrefix 0   xs     = xs
 dropPrefix num []     = []
 dropPrefix num (x:xs) = dropPrefix (num-1) xs
 
+member :: Eq a => a -> [a] -> Bool
+member target []     = False
+member target (x:xs) = (target == x) || member target xs
 
+-- data Maybe a = Just a | Nothing
+select :: [a] -> Integer -> Maybe a
+select []      index = Nothing
+select (x:xs)  0     = Just x
+select (x:xs)  index = select xs (index-1)
+
+largest :: [Int] -> Maybe Int
+largest []      = Nothing
+largest (x:xs)  = largestWorker x xs
+
+largestWorker best [] = Just best
+largestWorker best (x:xs)
+   | best < x  = largestWorker x    xs
+   | otherwise = largestWorker best xs
+
+smallest :: [Int] -> Maybe Int
+smallest []     = Nothing
+smallest (x:xs) = smallestWorker x xs
+
+smallestWorker small [] = Just small
+smallestWorker small (x:xs)
+   | small > x = smallestWorker x xs
+   | otherwise = smallestWorker small xs
