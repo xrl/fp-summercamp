@@ -1,12 +1,24 @@
-type Dictionary = [String]
+import Prelude  hiding (filter)
+import Data.Char
+import qualified Data.Map as Map
 
-spellCheck :: Dictionary -> (String -> Dictionary)
-spellCheck dict str = 
-  words = unwords str
+type NormalizedString = String
+type Dictionary = Map.Map NormalizedString String
 
-member :: Dictionary -> String -> Bool
-member []     y = False
-member (x:xs) y
-  | x == y    = True
-  | otherwise = member xs y
-  
+
+
+spellCheck :: Dictionary -> String -> Dictionary
+spellCheck dict = Map.filter (notInDict dict) . wordsToMap
+
+wordsToMap = Map.fromList . normalize . words
+normalize = map (\x -> ( (map toLower) x, x) )
+notInDict = not . flip Map.member
+
+
+
+spellCheckFiles :: FilePath -> FilePath -> IO ()
+spellCheckFiles inputPath dictPath = do
+  dictData  <- readFile dictPath
+  inputData <- readFile inputPath
+  let incorrectWords = spellCheck (wordsToMap dictData) inputData
+  putStrLn $ show incorrectWords
