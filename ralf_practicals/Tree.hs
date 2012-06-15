@@ -1,3 +1,6 @@
+module Tree
+where
+
 data Tree a = Node (Tree a) a (Tree a)
             | Empty
   deriving (Show)
