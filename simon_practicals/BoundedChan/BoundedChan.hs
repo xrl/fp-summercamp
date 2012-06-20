@@ -1,16 +1,11 @@
 --module BoundedChan
 --where
-import Prelude hiding (length)
+import Prelude hiding (reads)
 import Control.Monad
 import Control.Monad.STM
 import Control.Concurrent.STM.TVar
-import qualified Data.Sequence as Seq
 
-type MaxSize = Integer
-type ReadQueue  a = Seq.Seq a
-type WriteQueue a = Seq.Seq a
-
-data TChan a = TChan (TVar (ReadQueue a)) (TVar (WriteQueue a))
+data TChan a = TChan (TVar [a]) (TVar [a])
 
 main :: IO ()
 main = do
@@ -20,12 +15,11 @@ main = do
 task :: STM (IO ())
 task = do
   newChan <- emptyTChan
-  push newChan "asdf"
-  push newChan "fdsa"
+  push newChan "1"
+  push newChan "2"
   val <- pop newChan
-  push newChan "what"
-  push newChan "ohhh"
-  pop newChan
+  push newChan "3"
+  push newChan "4"
   pop newChan
   pop newChan
   pop newChan
@@ -34,30 +28,30 @@ task = do
 
 emptyTChan :: STM (TChan a)
 emptyTChan = do
-  readq  <- newTVar (Seq.empty)
-  writeq <- newTVar (Seq.empty)
+  readq  <- newTVar []
+  writeq <- newTVar []
   return (TChan readq writeq)
 
 push :: TChan a -> a -> STM (TChan a)
 push (TChan readq writeq) val = do
-  writeseq <- readTVar writeq
-  _ <- writeTVar writeq (writeseq Seq.|> val)
+  writes <- readTVar writeq
+  _ <- writeTVar writeq (val:writes)
   return $ TChan readq writeq
 
 pop :: TChan a -> STM a
 pop (TChan readqvar writeqvar) = do
-  readseq <- readTVar readqvar
-  case Seq.length readseq of
+  reads <- readTVar readqvar
+  case length reads of
     0 -> do
-      writeseq <- readTVar writeqvar
-      case Seq.length writeseq of
+      writes <- readTVar writeqvar
+      case length writes of
         0 -> retry
         otherwise -> do
-          let (val,rest) = Seq.splitAt 1 writeseq
-          writeTVar writeqvar Seq.empty
+          let (val:rest) = writes
+          writeTVar writeqvar []
           writeTVar readqvar rest
-          return (Seq.index val 0)
+          return val
     otherwise -> do
-      let (val,rest) = Seq.splitAt 1 readseq
+      let val:rest = reads
       writeTVar readqvar rest
-      return (Seq.index val 0)
+      return val
