@@ -1,53 +1,63 @@
 --module BoundedChan
 --where
 import Prelude hiding (length)
+import Control.Monad
 import Control.Monad.STM
 import Control.Concurrent.STM.TVar
-import Data.Sequence
+import qualified Data.Sequence as Seq
 
 type MaxSize = Integer
-type BChan a = BChan MaxSize (Seq a) 
-type TBChan a = TVar (BChan a)
+type ReadQueue  a = Seq.Seq a
+type WriteQueue a = Seq.Seq a
+
+data TChan a = TChan (TVar (ReadQueue a)) (TVar (WriteQueue a))
 
 main :: IO ()
 main = do
-  mychan <- newIO 5
-  --let list = [1,2,3]
-  --atomically $ do
-  --  mapM_ (\num -> add num mychan) list
+  join $ atomically $ task
   return ()
 
-new :: MaxSize -> STM (TBChan a)
-new size = newTVar (empty)
+task :: STM (IO ())
+task = do
+  newChan <- emptyTChan
+  push newChan "asdf"
+  push newChan "fdsa"
+  val <- pop newChan
+  push newChan "what"
+  push newChan "ohhh"
+  pop newChan
+  pop newChan
+  pop newChan
+  pop newChan
+  let printIt = putStrLn $ val
+  return (printIt)
 
-newIO :: MaxSize -> IO (TBChan a)
-newIO size = atomically $ new size
+emptyTChan :: STM (TChan a)
+emptyTChan = do
+  readq  <- newTVar (Seq.empty)
+  writeq <- newTVar (Seq.empty)
+  return (TChan readq writeq)
 
-add :: a -> TBChan a -> STM ()
-add entry tbchan = do
-  bchan <- readTVar tbchan
-  case (length bchan) of
-    0         -> retry
-    otherwise -> modifyTVar' tbchan (flip (|>) entry)
+push :: TChan a -> a -> STM (TChan a)
+push (TChan readq writeq) val = do
+  writeseq <- readTVar writeq
+  _ <- writeTVar writeq (writeseq Seq.|> val)
+  return $ TChan readq writeq
 
-size :: TBChan a -> STM Int
-size tbchan = do
-  bchan <- readTVar tbchan
-  return $ sizeBChan bchan
-
-addBChan :: a -> BChan a -> BChan a
-addBChan entry rest = BChan ((sizeBChan rest)-1) entry rest
-
-sizeBChan :: BChan a -> Int
-sizeBChan (Nil size)       = size
-sizeBChan (BChan size _ _) = size
-
-pop :: TBChan a -> STM a
-pop tbchan = do
-  bchan <- readTVar tbchan
-  hd = index bchan 0
-  writeTVar ()
-
-
-popBChan (Nil _)             = error "can't pop an empty bchan"
-popBChan (BChan _ entry end) = (entry,end)
+pop :: TChan a -> STM a
+pop (TChan readqvar writeqvar) = do
+  readseq <- readTVar readqvar
+  case Seq.length readseq of
+    0 -> do
+      writeseq <- readTVar writeqvar
+      case Seq.length writeseq of
+        0 -> retry
+        otherwise -> do
+          let (val,rest) = Seq.splitAt 1 writeseq
+          writeTVar writeqvar Seq.empty
+          writeTVar readqvar rest
+          return (Seq.index val 0)
+    otherwise -> do
+      let (val,rest) = Seq.splitAt 1 readseq
+      writeTVar readqvar rest
+      return (Seq.index val 0)
