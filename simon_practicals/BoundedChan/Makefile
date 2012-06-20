@@ -1,7 +1,7 @@
-all: BoundedChanSeq BoundedChan
+all: BoundedChanSeq TChan
 
-BoundedChan: BoundedChan.hs
-	ghc BoundedChan.hs -o BoundedChan
+TChan: TChan.hs
+	ghc TChan.hs -o TChan
 
 BoundedChanSeq: BoundedChanSeq.hs
 	ghc BoundedChanSeq.hs -o BoundedChanSeq
